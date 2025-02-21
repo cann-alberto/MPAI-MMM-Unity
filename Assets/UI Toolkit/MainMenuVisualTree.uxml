@@ -1,0 +1,35 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/MainMenuStyle.uss?fileID=7433441132597879392&amp;guid=2ebbc051241fede4a9c07005876dae67&amp;type=3#MainMenuStyle" />
+    <ui:VisualElement name="Container">
+        <ui:Label tabindex="-1" text="Main Menu" parse-escape-sequences="true" display-tooltip-when-elided="true" name="Header" class="header" />
+        <ui:Button text="Login" parse-escape-sequences="true" display-tooltip-when-elided="true" name="LoginButton" class="button" style="background-image: none;" />
+        <ui:Button text="Register" parse-escape-sequences="true" display-tooltip-when-elided="true" name="RegisterButton" class="button" style="visibility: visible;" />
+        <ui:VisualElement name="VisualElement" style="flex-grow: 1; flex-direction: row; visibility: visible;">
+            <ui:VisualElement name="LoginForm" style="flex-grow: 1; height: 621px; width: 641px; display: flex; visibility: hidden; overflow: visible;">
+                <ui:Label tabindex="-1" text="Account" parse-escape-sequences="true" display-tooltip-when-elided="true" class="header2" />
+                <ui:TextField picking-mode="Ignore" label="HumanID" name="loginHumanIdTextField" value="001" class="label" />
+                <ui:Button text="Login" parse-escape-sequences="true" display-tooltip-when-elided="true" name="submitLoginButton" class="button" />
+            </ui:VisualElement>
+            <ui:VisualElement name="RegistrationForm" style="flex-grow: 1; visibility: hidden; display: flex; height: 619px; width: 644px; flex-direction: column;">
+                <ui:Label tabindex="-1" text="Personal Profile" parse-escape-sequences="true" display-tooltip-when-elided="true" class="header2" style="display: flex;" />
+                <ui:TextField picking-mode="Ignore" label="First Name" value="First Name" name="firstNameTextField" class="label" />
+                <ui:TextField picking-mode="Ignore" label="Last Name" value="Last Name" name="lastNameTextField" class="label" />
+                <ui:IntegerField label="Age" value="18" name="ageTextField" class="label" />
+                <ui:TextField picking-mode="Ignore" label="Nationality" value="USA" name="nationalityTextField" class="label" />
+                <ui:TextField picking-mode="Ignore" label="Email" value="name.surname@mail.com" name="emailTextField" class="label" />
+                <ui:Label tabindex="-1" text="User" parse-escape-sequences="true" display-tooltip-when-elided="true" class="header2" />
+                <ui:TextField picking-mode="Ignore" label="HumanID" name="humanIdTextField" value="001" class="label" />
+                <ui:Label tabindex="-1" text="Device" parse-escape-sequences="true" display-tooltip-when-elided="true" class="header2" />
+                <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="Persona" parse-escape-sequences="true" display-tooltip-when-elided="true" class="header2" />
+                    <ui:Button parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarButton0" style="background-image: url(&quot;project://database/Assets/Images/Male.png?fileID=2800000&amp;guid=0e95680b439a0a1448f09b09e9eaa16f&amp;type=3#Male&quot;); width: 80px; height: 80px; margin-left: 75px;" />
+                    <ui:Button parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarButton1" style="background-image: url(&quot;project://database/Assets/Images/Male2.png?fileID=2800000&amp;guid=41c2364fe8272c74b9cff98869729161&amp;type=3#Male2&quot;); width: 80px; height: 80px;" />
+                    <ui:Button parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarButton2" style="background-image: url(&quot;project://database/Assets/Images/Female.png?fileID=2800000&amp;guid=0bbde64b33d2a094cbef10b906fda15c&amp;type=3#Female&quot;); width: 80px; height: 80px;" />
+                    <ui:Button parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarButton3" style="background-image: url(&quot;project://database/Assets/Images/Female2.png?fileID=2800000&amp;guid=f59895f217148c6478300150a918ccfd&amp;type=3#Female2&quot;); width: 80px; height: 80px;" />
+                </ui:VisualElement>
+                <ui:TextField picking-mode="Ignore" label="3D Model" value="Male" name="personaTextField" />
+                <ui:Button text="Submit" parse-escape-sequences="true" display-tooltip-when-elided="true" name="submitRegistrationButton" class="button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
