@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="CET-VR.png" alt="main" width="500">
+  <img src="header.png" alt="main" width="500">
 </p>
 
 # Implementing the MPAI Metaverse Model Architecture
