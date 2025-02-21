@@ -3,14 +3,17 @@
 </p>
 
 # Implementing the MPAI Metaverse Model Architecture
-This project presents a prototype implementation of the MMM architecture.
+This project presents a prototype implementation of the [**MPAI Metaverse Model (MPAI-MMM)**](https://mpai.community/standards/mpai-mmm/) architecture. 
 
 * [Introduction](#introduction)
 * [Builds and Building](#builds)
 * [Citation](#citation)
 
 ## Introduction
-This implementation is not intended as ``just another'' alternative metaverse platform but serves three critical purposes: i) validating the proposed standards through practical applications, ii) creating an open platform that can be offered to the community, and iii) acting as a source of insights and suggestions for extending the standards themselves.
+This implementation is not intended as ``just another'' alternative metaverse platform but serves three critical purposes: 
+* validating the standards through practical applications;
+* creating an open platform that can be offered to the community;
+* acting as a source of insights and suggestions for extending the standards themselves.
 
 ## Builds and Building
 The project was developed and tested using [**Unity 2022.3.x (LTS)**](https://unity3d.com/unity/qa/lts-releases?version=2021.3)
