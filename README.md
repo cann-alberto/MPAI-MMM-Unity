@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="CET-VR.png" alt="main" width="500">
-</p>
-
 # Implementing the MPAI Metaverse Model Architecture
 This project presents a prototype implementation of the MMM architecture.
 
