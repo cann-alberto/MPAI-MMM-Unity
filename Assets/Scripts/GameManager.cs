@@ -15,7 +15,7 @@ public class GameManager : MonoBehaviour
     public string pathToRoomExe;
 
 
-    public string currentPlayerPosition;
+    public string currentPlayerLocation;
 
     public GameObject localPlayerPrefab;
 

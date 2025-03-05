@@ -99,12 +99,11 @@ public class ServerSocket : MonoBehaviour
 
     void OnDestroy()
     {
-        // TODO Close the server socket only when the entire application was closed, not only the current scene
+        // TODO: Close the server socket only when the entire application was closed, not only the current scene
         //isRunning = false;
         //stream?.Close();
         //client?.Close();
-        //server?.Stop();
-        Debug.Log("[ON_DESTROY_SERVER_SOCKET]: Server stopped.");
+        //server?.Stop();        
     }
 
     private void Update()
@@ -123,23 +122,15 @@ public class MessageInfo
     public DateTime time;
     public string source;
     public string destination;
-    public string action;
-    public string inItem;
-    public string inLocation;
-    public string outLocation;
-    public string rightsID;
+    public string body;    
     
 
-    public MessageInfo(DateTime time, string source, string destination, string action, string inItem, string inLocation, string outLocation, string rightsID)
+    public MessageInfo(DateTime time, string source, string destination, string body)
     {
         this.time = time;
         this.source = source;
         this.destination = destination;
-        this.action = action;
-        this.inItem = inItem;
-        this.inLocation = inLocation;
-        this.outLocation = outLocation;
-        this.rightsID = rightsID;
+        this.body = body;        
     }
      
 }

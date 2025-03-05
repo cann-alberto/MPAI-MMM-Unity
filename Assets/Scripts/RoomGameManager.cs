@@ -4,6 +4,9 @@ using kcp2k;
 using System.IO;
 using System;
 using System.Collections.Generic;
+using GLTFast.Schema;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
+using Unity.VisualScripting.Antlr3.Runtime;
 
 public class RoomGameManager : MonoBehaviour
 {
@@ -57,12 +60,35 @@ public class RoomGameManager : MonoBehaviour
         }
         else // A client is connecting to the room
         {
-            Debug.Log("Room loaded with port: " + RoomData.port + ", Name: " + RoomData.roomName);
-            _transport.port = (ushort)RoomData.port;
-            //_transport.port = 7780;
+            //Debug.Log("Room " + RoomData.roomName + " loaded");
+            Debug.Log($"S-Process: User;\nAction: MM-Embed; \nS-Compl: Persona At MLoc With SA;\nD-Process: LOSrvc"); // Persona moved inside the Room (visible)
+            string moveDataJson = CreateEmbedDataJson();
+            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", moveDataJson, HandleResponse));
+
+            _transport.port = (ushort)RoomData.netInfo.Port;            
             _networkManager.StartClient(); // Start Mirror client            
         }
         
+    }
+
+    private string CreateEmbedDataJson()
+    {
+        string position = transform.position.ToString().Replace(",", ".");
+        string rotation = transform.localRotation.ToString().Replace(",", ".");
+        string jsonData = "{" +
+            "\"time\": \"" + DateTime.Now + "\"," +
+            "\"action\": \"MM-Embed\"," +
+            "\"sProcess\": \"" + GameManager.Instance.userID + "\"," +
+            "\"sComplements\": \"Persona At " + GameManager.Instance.currentPlayerLocation + " With SA position: " + position + " rotation: " + rotation + "\"," +
+            "\"dProcess\": \"Location Service\"" +
+            "}";
+        return jsonData;
+    }
+
+
+    private void HandleResponse(string response)
+    {
+        Debug.Log("Received response: " + response); // Log the response received from the server        
     }
 
     private void LogToFileHandler(string logString, string stackTrace, LogType type)
@@ -82,6 +108,6 @@ public class RoomGameManager : MonoBehaviour
 
 public static class RoomData
 {
-    public static int port;
     public static string roomName;
+    public static NetInfo netInfo;
 }

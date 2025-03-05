@@ -4,6 +4,7 @@ using ReadyPlayerMe.Samples.QuickStart;
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -77,25 +78,24 @@ public class InGameMenuEvents : MonoBehaviour
             //Remove the first line
             if (lines.Length > 10)
             {
-                lines = new ArraySegment<string>(lines, 1, lines.Length - 1).ToArray();
-                //+= "[" + DateTime.Now + "]: " + message + "\n";
+                lines = new ArraySegment<string>(lines, 1, lines.Length - 1).ToArray();                
             }
 
             // Add a new line
             string[] updatedLines = new string[lines.Length + 1];
             Array.Copy(lines, updatedLines, lines.Length);
             updatedLines[updatedLines.Length - 1] = 
-                "[" + message.time + "] "+ message.source + " : " + message.inItem + "\n";
+                "[" + message.time + "] "+ message.source + " : " + message.body + "\n";
 
             // Join the lines back with newlines and print the result
             _messageLabel.text = string.Join("\n", updatedLines);            
         }
     }
 
-  
 
 
-    /* MM-SEND */
+
+    #region MM-SEND
     private void OnMMSendButtonClicked(ClickEvent evt)
     {
         VisualElement sendMsgVisualElement = _document.rootVisualElement.Q("SendMsgVisualElement") as VisualElement;
@@ -117,20 +117,21 @@ public class InGameMenuEvents : MonoBehaviour
 
     private void SendMsg(ClickEvent evt)
     {
+        UnityEngine.Debug.Log($"S-Process: User1;\nAction: MM-Send; \nS-Compl: Message;\nD-Process: To User2"); //
+
         // Retrieve data from the GUI
         TextField toTextField = _document.rootVisualElement.Q("toTextField") as TextField;
         TextField msgTextField = _document.rootVisualElement.Q("msgTextField") as TextField;
 
         // Create Json data to be sent
         string actionDataJson = CreateMessageJson(toTextField.value, msgTextField.value);
-        StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Activity/actions", actionDataJson, HandleResponse));
-        UnityEngine.Debug.Log("Message sent to the WebApiServer");
+        StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Communication/messages", actionDataJson, HandleResponse));        
 
         // Send message to the target user
         SendTextMessage(toTextField.value, actionDataJson);
         UnityEngine.Debug.Log("Message sent to " + toTextField.value);
 
-        MessageInfo myMessage = new MessageInfo(DateTime.Now, GameManager.Instance.userID, toTextField.value, "MM-Send", msgTextField.value, GameManager.Instance.currentPlayerPosition, "Square", "string");
+        MessageInfo myMessage = new MessageInfo(DateTime.Now, GameManager.Instance.userID, toTextField.value, msgTextField.value);
         UpdateMessageLabel(myMessage);
         // Reset the TextField
         msgTextField.value = "";
@@ -138,22 +139,16 @@ public class InGameMenuEvents : MonoBehaviour
 
     private void HandleResponse(string response)
     {
-        UnityEngine.Debug.Log("Received response: " + response); // Log the response received from the server
-
-        // TODO: send the message to the Unity server
+        UnityEngine.Debug.Log("Received response: " + response); // Log the response received from the server        
     }
 
     private string CreateMessageJson(string toTextField, string msgTextField)
     {        
-        string jsonData = "{" +
-            "\"time\": \"" + DateTime.Now + "\"," +
+        string jsonData = "{" +            
+            "\"body\": \"" + msgTextField + "\"," +
             "\"source\": \"" + GameManager.Instance.userID + "\"," +
             "\"destination\": \"" + toTextField + "\"," +
-            "\"action\": \"MM-Send\"," +
-            "\"inItem\": \"" + msgTextField + "\"," +
-            "\"inLocation\": \"" + GameManager.Instance.currentPlayerPosition + "\"," +
-            "\"outLocation\": \"Square\"," + // TODO: retrieve position of the target pleyer
-            "\"rightsID\": \"string\"" +
+            "\"time\": \"" + DateTime.Now + "\"" +
             "}";
         return jsonData;
     }
@@ -189,12 +184,11 @@ public class InGameMenuEvents : MonoBehaviour
         // Once connected, send the message
         GameManager.Instance.ClientSocket.SendSocketMessage(msgTextField);
     }
+    #endregion
 
-    /* CREATE ROOM */
+    #region ROOM
     private void OnCreateRoomButtonClicked(ClickEvent evt)
-    {
-        UnityEngine.Debug.Log("Create Room button clicked.");
-
+    {      
         _playerTracker = GameManager.Instance.localPlayerPrefab.GetComponent<PlayerTracker>();
 
         if (_playerTracker == null)
@@ -203,24 +197,57 @@ public class InGameMenuEvents : MonoBehaviour
         }
         if (_playerTracker != null)
         {
-            _playerTracker.OnRoomInstantiated += HandleRoomInstantiated;
-            _playerTracker.InstantiateRoomPrefab();
-        }
-        else
-        {
-            UnityEngine.Debug.LogError("PlayerTracker is null or not assigned.");
-        }        
-
+            StartCoroutine(BuyAndCreateRoom(_playerTracker));                     
+        }              
     }
-    private void HandleRoomInstantiated()
-    {
-        UnityEngine.Debug.Log("Room prefab instantiated, trying to connet to the server");
 
+
+    private IEnumerator BuyAndCreateRoom(PlayerTracker playerTracker)
+    {
+        // User buys the Parcel        
+        bool isTransactSucces = false;
+        string newTransact = CreateTransaction();
+        UnityEngine.Debug.Log($"S-Process: User;\nAction: Transact; \nS-Compl: With Transaction;\nD-Process: User"); //User1 buys Parcel
+
+        yield return GameManager.Instance.WebAPIManager.Upload("Transact/transaction", newTransact, (responseText) =>
+        {
+            if (responseText != null)
+            {
+                UnityEngine.Debug.Log("Transaction created successfully");                
+                isTransactSucces = true;
+            }
+            else
+            {
+                UnityEngine.Debug.LogError("Error while creating the trasaction");
+            }
+        });
+        if (!isTransactSucces) yield break;
+
+        // Request to istantiate the room pref on the server
+        _playerTracker.OnRoomInstantiated += HandleRoomInstantiated;
+        _playerTracker.InstantiateRoomPrefab();
+    }
+
+    private void HandleRoomInstantiated()
+    {                
         _playerTracker.OnRoomInstantiated -= HandleRoomInstantiated; // Unsubscribe to avoid memory leaks        
-        
         // Activate the camera orbit script
         cameraOrbit.enabled = true;
     }
+
+    private string CreateTransaction()
+    {        
+        string jsonData = "{" +
+            " \"header\": \"MMM-ACC-V2.2\",  " +
+            " \"mInstanceID\": \"MInstance00\",  " +
+            " \"transactionData\": {" +
+            "   \"assetID\": \" Asset00\", " +
+            "   \"transactionTime\": \"" + DateTime.Now + "\"" +
+            "},  " +
+            "\"descrMetadata\": \"" + DateTime.Now + "\"}";        
+        return jsonData;
+    }
+    #endregion
 
     void OnApplicationQuit()
     {

@@ -1,24 +1,22 @@
 using Mirror;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
+
 
 public class PlayerTracker : NetworkBehaviour
 {    
     public GameObject roomPrefab;
     public event Action OnRoomInstantiated;  // Define an event
-    private bool hasTriedToConnect = false;
-    private static HashSet<int> usedPorts = new HashSet<int>(); // Track used ports
-    private static int basePort = 7780; // Base port number
+    private bool hasTriedToConnect = false;    
 
-
+    int port = 0; 
 
     void Start()
-    {
-        hasTriedToConnect = false;    
-    }
+    {        
+        hasTriedToConnect = false;                
+    }    
 
     private void OnTriggerEnter(Collider other)
     {
@@ -26,20 +24,21 @@ public class PlayerTracker : NetworkBehaviour
         {
             if (other.CompareTag("Parcel"))
             {
-                UnityEngine.Debug.Log("Player enter: " + other.gameObject.name);                
-                string actionDataJson = CreateEmbedJson(other.gameObject.name, GameManager.Instance.userID);
-                StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Activity/actions", actionDataJson, HandleResponse));
-                GameManager.Instance.currentPlayerPosition = other.gameObject.name;
+                UnityEngine.Debug.Log("Player enter: " + other.gameObject.name);
+                UnityEngine.Debug.Log($"S-Process: User;\nAction: MM-Move; \nS-Compl: Persona From MLoc To MLoc({other.gameObject.name}) With SA ;\nD-Process: LOSrvc"); //Persona moved close to Parcel                
+
+                string moveDataJson = CreateMoveDataJson(other.gameObject.name);
+                StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", moveDataJson, HandleResponse));
+                GameManager.Instance.currentPlayerLocation = other.gameObject.name;
             }
             if (other.CompareTag("RoomPlaceholder") && !hasTriedToConnect)
             {
                 hasTriedToConnect = true; // To avoid trying multiple conenction ot the same room
                 NetInfo netInfo = other.GetComponent<NetInfo>();
                 UnityEngine.Debug.Log("NetInfo[Mirror Server]: " + netInfo.IpAddress + ":" + netInfo.Port + "\nNetInfo[Communication Server]: " + netInfo.IpAddressComServer + ":" + netInfo.PortComServer);
-                
-                RoomData.port = netInfo.Port;
-                RoomData.roomName = "Lobby Room";
-                //SceneManager.LoadScene("Room");
+
+                RoomData.roomName = "Room_[" + netInfo.IpAddress+":"+netInfo.Port+"]";
+                RoomData.netInfo = netInfo;                                
 
                 StartCoroutine(GameManager.Instance.ClientSocket.TryConnectToServerCoroutine(netInfo.IpAddressComServer, netInfo.PortComServer, 10, 2f));
             }
@@ -48,43 +47,40 @@ public class PlayerTracker : NetworkBehaviour
     }
 
     private void OnTriggerExit(Collider other)
-    {        
-        if (other.CompareTag("Parcel"))
-            UnityEngine.Debug.Log("Exit from:" + other.gameObject.name);
+    {
+        if (isLocalPlayer)
+        {
+            if (other.CompareTag("Parcel"))
+                UnityEngine.Debug.Log("Exit from:" + other.gameObject.name);
+        }
     }
-
-
-    // Callback method to handle the response from the GET request
+    
     private void HandleResponse(string response)
     {
-        UnityEngine.Debug.Log("Received response: " + response); // Log the response received from the server
-        
+        UnityEngine.Debug.Log("Received response: " + response); // Log the response received from the server        
     }
 
-    private string CreateEmbedJson(string ParcelName, string userID)
-    {
+    private string CreateMoveDataJson(string ParcelName)
+    {                
+        string position = transform.position.ToString().Replace(",", ".");        
+        string rotation = transform.localRotation.ToString().Replace(",", ".");       
         string jsonData = "{" +
             "\"time\": \"" + DateTime.Now + "\"," +
-            "\"source\": \"" + userID + "\"," +            
-            "\"destination\": \"Activity Service\"," +
-            "\"action\": \"MM-Embed\"," +
-            "\"inItem\": \"At " + ParcelName + "\"," +
-            "\"inLocation\": \"At " + ParcelName + "\"," +
-            "\"outLocation\": \"At " + ParcelName + "\"," +
-            "\"rightsID\": \"string\"" +
-            "}";
-        return jsonData;
-    }
-
-    
+            "\"action\": \"MM-Move\"," +
+            "\"sProcess\": \"" + GameManager.Instance.userID + "\"," +
+            "\"sComplements\": \"Persona From " + GameManager.Instance.currentPlayerLocation + " To " + ParcelName + " With SA position: " + position + " rotation: " + rotation + "\"," +
+            "\"dProcess\": \"Location Service\"" +
+            "}";        
+        return jsonData;       
+    }    
 
     [Command]
     public void CmdInstantiateRoom(Vector3 position, Quaternion orientation)
     {
         if (!isServer) return;
 
-        // TODO search for a free port
-        int port = FindFreePort();
+        // Search for a free port
+        int port = PortManager.Instance.FindFreePort();
         if (port == -1)
         {
             UnityEngine.Debug.LogError("No available ports to create a new room.");
@@ -96,10 +92,12 @@ public class PlayerTracker : NetworkBehaviour
         NetworkServer.Spawn(roomObject);
         netInfo.SetNetworkInfo("127.0.0.1", port, "127.0.0.1", port + 1); // TODO: replace the ipAddresses
 
-        UnityEngine.Debug.Log("Launching the server...");        
-        LaunchRoomServer(port);
-        RpcNotifyRoomCreated(); // Notify clients
+        // Store the room in the dictionary
+        PortManager.Instance.TrackRoom(port, roomObject);        
 
+        UnityEngine.Debug.Log("Launching the server...");        
+        LaunchRoomServer(port); // Launch the Mirror server
+        RpcNotifyRoomCreated(); // Notify clients
     }
 
     [ClientRpc]
@@ -108,12 +106,13 @@ public class PlayerTracker : NetworkBehaviour
         OnRoomInstantiated?.Invoke(); // Invoke event when room is instatiated
     }
 
-    // Public method to allow interaction from other scripts
     public void InstantiateRoomPrefab()
     {
-
         if (isLocalPlayer)
-        {            
+        {
+            UnityEngine.Debug.Log($"S-Process: User;\nAction: MM-Add; \nS-Compl:Room At MLoc With SA;\nD-Process: LOSrvc"); //User1 places Room on Parcel        
+            string addDataJson = CreateAddDataJson();
+            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", addDataJson, HandleResponse));
             CmdInstantiateRoom(transform.position, transform.localRotation);
         }
         else
@@ -122,47 +121,44 @@ public class PlayerTracker : NetworkBehaviour
         }
     }
 
+    private string CreateAddDataJson()
+    {
+        string position = transform.position.ToString().Replace(",", ".");
+        string rotation = transform.localRotation.ToString().Replace(",", ".");
+        string jsonData = "{" +
+            "\"time\": \"" + DateTime.Now + "\"," +
+            "\"action\": \"MM-Add\"," +
+            "\"sProcess\": \"" + GameManager.Instance.userID + "\"," +
+            "\"sComplements\": \"Room At " + GameManager.Instance.currentPlayerLocation + " With SA position: " + position + " rotation: " + rotation + "\"," +
+            "\"dProcess\": \"Location Service\"" +
+            "}";
+        return jsonData;        
+    }
+
     private void LaunchRoomServer(int port)
     {
         //Launch the server        
         string sceneName = "Room Server";
 
         ProcessStartInfo startInfo = new ProcessStartInfo();
-        startInfo.FileName = GameManager.Instance.pathToRoomExe;
-        //startInfo.FileName = "C:\\Users\\lab2a\\Documents\\Unity Projects\\MPAI-MMM\\Builds\\MPAI-MMM.exe";
+        startInfo.FileName = GameManager.Instance.pathToRoomExe;        
         startInfo.Arguments = $"-scene {sceneName} -port {port}";
         startInfo.UseShellExecute = false;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
         startInfo.CreateNoWindow = true;
+        
         Process serverProcess = new Process();
         serverProcess.StartInfo = startInfo;
-        serverProcess.Start();
+        serverProcess.EnableRaisingEvents = true;
+        serverProcess.Exited += (sender, args) => OnRoomServerClosed(port); // Attach event        
+        serverProcess.Start();        
+    }
+    
+    public void OnRoomServerClosed(int port)
+    {        
+        UnityEngine.Debug.Log($"Room server closed for port {port}");
+        PortManager.Instance.PortsToDestroy.Enqueue(port);        
     }
 
-    private int FindFreePort()
-    {
-        int maxPort = basePort + 100; // Arbitrary max range for ports
-
-        for (int port = basePort; port <= maxPort; port += 2) // Increment by 2 to reserve consecutive ports
-        {
-            if (!usedPorts.Contains(port))
-            {
-                usedPorts.Add(port);
-                return port;
-            }
-        }
-
-        return -1; // No available ports
-    }
-
-    [Server]
-    public static void FreePort(int port)
-    {
-        if (usedPorts.Contains(port))
-        {
-            usedPorts.Remove(port);
-            UnityEngine.Debug.Log("Freed port: " + port);
-        }
-    }
 }

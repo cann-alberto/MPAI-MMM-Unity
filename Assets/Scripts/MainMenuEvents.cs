@@ -34,7 +34,8 @@ public class MainMenuEvents : MonoBehaviour
         _buttonLogin.UnregisterCallback<ClickEvent>(OnLoginButtonClick);
         _buttonRegister.UnregisterCallback <ClickEvent>(OnRegisterButtonClick);        
     }
-
+    
+    #region Login
     private void OnLoginButtonClick(ClickEvent evt)
     {
         _registrationForm.style.visibility = Visibility.Hidden; 
@@ -74,35 +75,19 @@ public class MainMenuEvents : MonoBehaviour
             Debug.LogError("Failed to login. Account is null.");
             yield break;
         }
-
-        bool actionSent = false;
-        string actionDataJson = CreateLoginMessageJson(userAccount.users[0].id);
-        yield return GameManager.Instance.WebAPIManager.Upload("Activity/actions", actionDataJson, (responseText) =>
-        {
-            if (responseText != null)
-            {
-                Debug.Log("Actions sent successfully:" + responseText);
-                actionSent = true;
-            }
-            else
-            {
-                Debug.LogError("Error while sending login messagge.");                
-            }
-        });
-        
-        if (!actionSent) yield break;
-        
+                
         // Update the DataManager with the retrieved account data
         GameManager.Instance.humanID = humanID;
         GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + userAccount.personae[0].model;
         GameManager.Instance.userID = userAccount.users[0].id;
 
         _networkClientManager.ConnectToServer(); // Start Mirror Server
-        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Info Server
-        
+        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Communication Server        
     }
 
-    //Registration
+    #endregion
+
+    #region Registration
     private void OnRegisterButtonClick(ClickEvent evt)
     {
         _loginForm.style.visibility = Visibility.Hidden;
@@ -148,6 +133,8 @@ public class MainMenuEvents : MonoBehaviour
 
     private void OnSubmitRegisterButtonClick(ClickEvent evt)
     {
+        Debug.Log("S-Process: Human;\nAction: Register;\nS-Compl: With PersonalProfile;\nD-Process: RGSrvc;\nD-Compl: To human"); //human registers with M-Instance
+
         // Collect personal data in JSON format
         string personalDataJson = CreatePersonalDataJson();
 
@@ -189,6 +176,8 @@ public class MainMenuEvents : MonoBehaviour
             }
         });
         if (newAccount == null) yield break;
+        Debug.Log("S-Process: RGSrvc;\nS-Compl: Account;\nD-Process: human");
+
 
         // Step 3: Create the user
         User newUser = null;        
@@ -226,29 +215,9 @@ public class MainMenuEvents : MonoBehaviour
         GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;
         GameManager.Instance.userID = newUser.id;
 
-        // Step 5: Sending login message to the ActivitySrv
-        bool actionSent = false;
-        string actionDataJson = CreateLoginMessageJson(newUser.id);
-        yield return GameManager.Instance.WebAPIManager.Upload("Activity/actions", actionDataJson, (responseText) =>
-        {
-            if (responseText != null)
-            {
-                Debug.Log("Actions sent successfully:" + responseText);
-                actionSent = true;
-            }
-            else
-            {
-                Debug.LogError("Error while sending login messagge.");
-            }
-        });
-
-        if (!actionSent) yield break;
-
-
-
         // Step 5: Connect to the server
         _networkClientManager.ConnectToServer();
-        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Info Server
+        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Communication Server
     }
 
     private string CreatePersonalDataJson()
@@ -271,9 +240,7 @@ public class MainMenuEvents : MonoBehaviour
             "   \"nationality\": \"" + nationalityTextField.value + "\"," +
             "   \"email\": \"" + emailTextField.value + "\" " +
             "},  " +
-            "\"descrMetadata\": \"" + DateTime.Now + "\"}";
-        
-        Debug.Log("jsonData to be sent [GetPersonalData]: " + jsonData);
+            "\"descrMetadata\": \"" + DateTime.Now + "\"}";                
 
         // Passing data to the online scene
         GameManager.Instance.playerName = firstNameTextField.value;
@@ -305,22 +272,7 @@ public class MainMenuEvents : MonoBehaviour
         GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;        
         return jsonData;
     }
-
-    private string CreateLoginMessageJson(string userID) 
-    {
-        string jsonData = "{" +            
-            "\"time\": \"" + DateTime.Now + "\"," +
-            "\"source\": \"" + userID + "\"," +            
-            "\"destination\": \"Activity Service\"," +
-            "\"action\": \"MM-Send\"," +
-            "\"inItem\": \"I’m on MMM\"," +
-            "\"inLocation\": \"Square\"," +
-            "\"outLocation\": \"Square\"," +
-            "\"rightsID\": \"string\"" +
-            "}";
-        return jsonData;
-    }
-
+    
     private string CreateUpdatedAccountJson(Account accountToUpdate, User newUser, string persona)
     {
         string jsonData = "{" +
@@ -337,7 +289,7 @@ public class MainMenuEvents : MonoBehaviour
         Debug.Log(jsonData);
         return jsonData;        
     }
-
+    #endregion
 
 }
 
