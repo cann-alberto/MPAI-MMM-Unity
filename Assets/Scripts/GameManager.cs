@@ -9,7 +9,9 @@ public class GameManager : MonoBehaviour
     public string personaUrl;
     public string humanID;
     public string userID;
-    [Tooltip("Port for the Communication Server")]
+    [Tooltip("IpAddress of the Communication Server")]
+    public string ipAddress;
+    [Tooltip("Port of the Communication Server")]
     public int port;
     [Tooltip("Path to the Room.exe file")]
     public string pathToRoomExe;

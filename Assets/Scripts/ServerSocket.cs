@@ -1,4 +1,3 @@
-using ReadyPlayerMe.Core;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
@@ -17,11 +16,12 @@ public class ServerSocket : MonoBehaviour
     private ConcurrentQueue<MessageInfo> messageQueue = new ConcurrentQueue<MessageInfo>(); // Thread-safe queue
 
     public event Action<MessageInfo> OnMessageReceived;
-    public void StartServer(int port)
+    public void StartServer(string ipAddress, int port)
     {
         try
         {
-            _server = new TcpListener(IPAddress.Any, port);
+            //_server = new TcpListener(IPAddress.Any, port);
+            _server = new TcpListener(IPAddress.Parse(ipAddress), port);
             _server.Start();
             _isRunning = true;
             Debug.Log("Server socket started. Waiting for client...");

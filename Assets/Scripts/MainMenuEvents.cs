@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Net;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -79,11 +80,42 @@ public class MainMenuEvents : MonoBehaviour
         // Update the DataManager with the retrieved account data
         GameManager.Instance.humanID = humanID;
         GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + userAccount.personae[0].model;
-        GameManager.Instance.userID = userAccount.users[0].id;
+        GameManager.Instance.userID = userAccount.users[0].userID;
+
+        bool userUpdated = false;
+        string userJson = CreateUpdatedUserJson(userAccount.users[0].userID, humanID, GameManager.Instance.ipAddress, GameManager.Instance.port);
+        
+        // Send information for comunication
+        yield return GameManager.Instance.WebAPIManager.PutRequest("Activity/users/" + userAccount.users[0].userID + "/comInfo", userJson, (responseText) =>
+        {
+            if (responseText != null)
+            {
+                Debug.Log("User updated successfully for userID: " + userAccount.users[0].userID);
+                userUpdated = true;
+            }
+            else
+            {
+                Debug.LogError("Error while updating user.");
+            }
+        });
+        if (!userUpdated) yield break;
 
         _networkClientManager.ConnectToServer(); // Start Mirror Server
-        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Communication Server        
+        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.ipAddress, GameManager.Instance.port); // Start Communication Server        
     }
+
+    private string CreateUpdatedUserJson(string userId, string humanID, string iPAddress, int port)
+    {
+        string jsonData = "{" +
+            " \"userID\": \"" + userId + "\", " +
+            " \"humanID\": \"" + humanID + "\"," +
+            " \"comIp\": \"" + iPAddress.ToString() + "\", " +
+            " \"comPort\": \"" + port + "\"" +            
+            "}";        
+        Debug.Log(jsonData);
+        return jsonData;
+    }
+
 
     #endregion
 
@@ -139,10 +171,10 @@ public class MainMenuEvents : MonoBehaviour
         string personalDataJson = CreatePersonalDataJson();
 
         // Start the process with the profile creation
-        StartCoroutine(CreateProfileAndAccount(personalDataJson));
+        StartCoroutine(RegisterHuman(personalDataJson));
     }
 
-    private IEnumerator CreateProfileAndAccount(string personalDataJson)
+    private IEnumerator RegisterHuman(string personalDataJson)
     {
         // Step 1: Create the profile
         Profile newProfile = null;        
@@ -178,10 +210,10 @@ public class MainMenuEvents : MonoBehaviour
         if (newAccount == null) yield break;
         Debug.Log("S-Process: RGSrvc;\nS-Compl: Account;\nD-Process: human");
 
-
         // Step 3: Create the user
-        User newUser = null;        
-        yield return GameManager.Instance.WebAPIManager.Upload("Registration/users", "{}", (responseText) =>
+        User newUser = null;
+        string newUserJson = CreateNewUser();
+        yield return GameManager.Instance.WebAPIManager.Upload("Registration/users", newUserJson, (responseText) =>
         {
             if (responseText != null)
             {
@@ -193,8 +225,8 @@ public class MainMenuEvents : MonoBehaviour
                 Debug.LogError("Error while creating the user");
             }
         });
-        if (newUser == null) yield break;        
-
+        if (newUser == null) yield break;
+        
         // Step 4: Update the account
         bool accountUpdated = false;
         TextField personaTextField = _document.rootVisualElement.Q("personaTextField") as TextField;        
@@ -213,11 +245,38 @@ public class MainMenuEvents : MonoBehaviour
         });
         if (!accountUpdated) yield break;
         GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;
-        GameManager.Instance.userID = newUser.id;
+        GameManager.Instance.userID = newUser.userID;
 
-        // Step 5: Connect to the server
+
+        // Step 5: Send information for comunication
+        bool userUpdated = false;
+        string userJson = CreateUpdatedUserJson(newUser.userID, newAccount.humanID, GameManager.Instance.ipAddress, GameManager.Instance.port);
+        yield return GameManager.Instance.WebAPIManager.PutRequest("Activity/users/" + newUser.userID + "/comInfo", userJson, (responseText) =>
+        {
+            if (responseText != null)
+            {
+                Debug.Log("User updated successfully for userID: " + newUser.userID);
+                userUpdated = true;
+            }
+            else
+            {
+                Debug.LogError("Error while updating user.");
+            }
+        });
+        if (!userUpdated) yield break;
+
+        // Step 6: Connect to the server
         _networkClientManager.ConnectToServer();
-        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.port); // Start Communication Server
+        GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.ipAddress, GameManager.Instance.port); // Start Communication Server
+
+    }
+
+    private string CreateNewUser()
+    {
+        TextField humanIdTextField = _document.rootVisualElement.Q("humanIdTextField") as TextField;
+        string jsonData = "{" +
+            " \"humanID\": \"" + humanIdTextField.value + "\"}";
+        return jsonData;
     }
 
     private string CreatePersonalDataJson()
@@ -283,7 +342,9 @@ public class MainMenuEvents : MonoBehaviour
             " \"humanID\": \"" + accountToUpdate.humanID + "\", " +
             " \"personalProfileID\": \"" + accountToUpdate.personalProfileID + "\", " +
             " \"rights\": []," +
-            " \"users\": [{\"id\": \"" + newUser.id + "\"}]," +            
+            " \"users\": [{" +
+                "\"userID\": \"" + newUser.userID + "\", " +
+                "\"humanID\": \"" + newUser.humanID + "\"}]," +            
             " \"personae\": [{\"model\": \"" + persona + "\"}]," +
             "\"descrMetadata\": \"" + DateTime.Now + "\"}";
         Debug.Log(jsonData);

@@ -54,8 +54,8 @@ public class RoomGameManager : MonoBehaviour
                     writer.WriteLine(DateTime.Now + ": Server started at port " + _transport.port);
                 }
 
-                // Start Communication Server
-                _serverSocket.StartServer(_transport.port + 1);
+                // Start Communication Server 
+                _serverSocket.StartServer("0.0.0.0", _transport.port + 1); //TODO specify the ip address of the comunication server for the room
             }
         }
         else // A client is connecting to the room

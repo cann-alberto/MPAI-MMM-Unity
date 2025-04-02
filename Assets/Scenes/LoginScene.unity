@@ -357,9 +357,10 @@ MonoBehaviour:
   personaUrl: 
   humanID: 
   userID: 
+  ipAddress: 127.0.0.1
   port: 8081
-  pathToRoomExe: C:\\Users\\lab2a\\Documents\\Unity Projects\\MPAI-MMM\\Builds\\MPAI-MMM.exe
-  currentPlayerPosition: 
+  pathToRoomExe: C:\\Users\\lab2a\\Documents\\MPAI-MMM-Unity\\Builds\\MPAI-MMM.exe
+  currentPlayerLocation: 
   localPlayerPrefab: {fileID: 0}
 --- !u!4 &1142055672
 Transform:

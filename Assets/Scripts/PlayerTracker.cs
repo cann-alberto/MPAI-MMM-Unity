@@ -2,7 +2,6 @@ using Mirror;
 using System;
 using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 
 public class PlayerTracker : NetworkBehaviour

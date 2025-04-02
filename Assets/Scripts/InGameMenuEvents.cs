@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 using UnityEngine.UIElements;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public class InGameMenuEvents : MonoBehaviour
 {
@@ -117,24 +118,72 @@ public class InGameMenuEvents : MonoBehaviour
 
     private void SendMsg(ClickEvent evt)
     {
-        UnityEngine.Debug.Log($"S-Process: User1;\nAction: MM-Send; \nS-Compl: Message;\nD-Process: To User2"); //
+        
 
-        // Retrieve data from the GUI
-        TextField toTextField = _document.rootVisualElement.Q("toTextField") as TextField;
-        TextField msgTextField = _document.rootVisualElement.Q("msgTextField") as TextField;
+        TextField toTextField = _document.rootVisualElement.Q<TextField>("toTextField");
+        TextField msgTextField = _document.rootVisualElement.Q<TextField>("msgTextField");
 
-        // Create Json data to be sent
-        string actionDataJson = CreateMessageJson(toTextField.value, msgTextField.value);
-        StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Communication/messages", actionDataJson, HandleResponse));        
+        if (toTextField == null || msgTextField == null)
+        {
+            UnityEngine.Debug.LogError("Input fields not found.");
+            return;
+        }
 
-        // Send message to the target user
-        SendTextMessage(toTextField.value, actionDataJson);
-        UnityEngine.Debug.Log("Message sent to " + toTextField.value);
 
-        MessageInfo myMessage = new MessageInfo(DateTime.Now, GameManager.Instance.userID, toTextField.value, msgTextField.value);
-        UpdateMessageLabel(myMessage);
-        // Reset the TextField
-        msgTextField.value = "";
+        // Retrieve comInfo by humanID
+        UnityEngine.Debug.Log("S-Process: User1;\nAction: MM-Send;\nS-Compl: Message;\nD-Process: ACSrvc"); //User1 checks User2’s whereabout
+        StartCoroutine(RetrieveComInfo(toTextField.value, (comInfo) =>
+        {
+            if (string.IsNullOrEmpty(comInfo))
+            {
+                UnityEngine.Debug.LogError("Failed to retrieve communication info.");
+                return;
+            }
+
+            // Send the message
+            UnityEngine.Debug.Log("S-Process: User1;\nAction: MM-Send;\nS-Compl: Message;\nD-Process: To User2");// User1 sends a message to User2
+            UnityEngine.Debug.Log("after" + comInfo);
+            string actionDataJson = CreateMessageJson(comInfo, msgTextField.value);
+            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Communication/messages", actionDataJson, HandleResponse));
+
+            SendTextMessage(comInfo, actionDataJson);
+            UnityEngine.Debug.Log("Message sent to " + comInfo);
+
+            MessageInfo myMessage = new MessageInfo(DateTime.Now, GameManager.Instance.userID, comInfo, msgTextField.value);
+            UpdateMessageLabel(myMessage);
+
+            msgTextField.value = "";
+        }));
+    }
+
+    private IEnumerator RetrieveComInfo(string humanID, Action<string> onCompleted)
+    {
+        User targetUser = null;
+
+        yield return GameManager.Instance.WebAPIManager.GetRequest("Activity/user/humanid/" + humanID, (responseText) =>
+        {
+            if (!string.IsNullOrEmpty(responseText))
+            {
+                targetUser = JsonUtility.FromJson<User>(responseText);
+            }
+            else
+            {
+                UnityEngine.Debug.LogError("Error while retrieving the account.");
+            }
+        });
+        
+        if (targetUser == null)
+        {
+            UnityEngine.Debug.LogError("Account is null.");
+            onCompleted?.Invoke(null);
+            yield break;
+        }
+        UnityEngine.Debug.Log(targetUser.comIp);
+        UnityEngine.Debug.Log(targetUser.comPort);
+
+        string comInfo = targetUser.comIp + ":" + targetUser.comPort;
+        UnityEngine.Debug.Log("before" + comInfo);
+        onCompleted?.Invoke(comInfo);
     }
 
     private void HandleResponse(string response)

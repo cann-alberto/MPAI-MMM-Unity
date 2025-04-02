@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
-
 public class WebAPIManager : MonoBehaviour
 {
     [SerializeField]
@@ -181,7 +180,10 @@ public class Right
 [Serializable]
 public class User
 {
-    public string id;
+    public string userID;
+    public string humanID;
+    public string comIp;
+    public string comPort;
 }
 
 [Serializable]
