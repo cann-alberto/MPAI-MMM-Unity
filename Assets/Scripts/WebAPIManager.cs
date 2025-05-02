@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -65,27 +66,8 @@ public class WebAPIManager : MonoBehaviour
             }
         }
     }
-
-    public IEnumerator Upload(string uri, string jsonData)
-    {
-        uri = BASE_URL + uri;
-        using (UnityWebRequest www = UnityWebRequest.Post(uri, jsonData, "application/json"))
-        {
-            yield return www.SendWebRequest();
-
-            if (www.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogError(www.error);
-            }
-            else
-            {
-                Debug.Log("Form upload completed!");
-                Debug.Log(www.downloadHandler.text);
-            }
-        }
-    }
-
-    public IEnumerator Upload(string uri, string jsonData, System.Action<string> callback)
+    
+    public IEnumerator UploadRequest(string uri, string jsonData, System.Action<string> callback)
     {
         uri = BASE_URL + uri;
         using (UnityWebRequest www = UnityWebRequest.Post(uri, jsonData, "application/json"))
@@ -154,18 +136,24 @@ public class Profile
 [Serializable]
 public class Account
 {
-
     public string accountID;
     public string header;
     public string mInstanceID;
     public string mEnvironmentID;
     public string humanID;
     public string personalProfileID;
-    public List<Right> rights;
-    public List<User> users;
-    public List<Persona> personae;
+    public List<ProcessData> processData;            
     public string descrMetadata;
 }
+
+[Serializable]
+public class ProcessData 
+{
+    public string processID;
+    public List<string> rightsID;
+    public List<string> personaID;
+}
+
 
 [Serializable]
 public class Right

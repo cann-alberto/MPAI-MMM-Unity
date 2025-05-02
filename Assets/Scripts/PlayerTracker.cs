@@ -23,11 +23,8 @@ public class PlayerTracker : NetworkBehaviour
         {
             if (other.CompareTag("Parcel"))
             {
-                UnityEngine.Debug.Log("Player enter: " + other.gameObject.name);
-                UnityEngine.Debug.Log($"S-Process: User;\nAction: MM-Move; \nS-Compl: Persona From MLoc To MLoc({other.gameObject.name}) With SA ;\nD-Process: LOSrvc"); //Persona moved close to Parcel                
-
-                string moveDataJson = CreateMoveDataJson(other.gameObject.name);
-                StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", moveDataJson, HandleResponse));
+                UnityEngine.Debug.Log("Player enter: " + other.gameObject.name);                
+                string moveDataJson = CreateMoveDataJson(other.gameObject.name);                
                 GameManager.Instance.currentPlayerLocation = other.gameObject.name;
             }
             if (other.CompareTag("RoomPlaceholder") && !hasTriedToConnect)
@@ -108,10 +105,9 @@ public class PlayerTracker : NetworkBehaviour
     public void InstantiateRoomPrefab()
     {
         if (isLocalPlayer)
-        {
-            UnityEngine.Debug.Log($"S-Process: User;\nAction: MM-Add; \nS-Compl:Room At MLoc With SA;\nD-Process: LOSrvc"); //User1 places Room on Parcel        
-            string addDataJson = CreateAddDataJson();
-            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", addDataJson, HandleResponse));
+        {            
+            string actionDataJson = CreateActionDataJson();
+            StartCoroutine(GameManager.Instance.WebAPIManager.UploadRequest("Activity/process-actions", actionDataJson, HandleResponse));
             CmdInstantiateRoom(transform.position, transform.localRotation);
         }
         else
@@ -120,15 +116,31 @@ public class PlayerTracker : NetworkBehaviour
         }
     }
 
-    private string CreateAddDataJson()
+    private string CreateActionDataJson()
     {
         string position = transform.position.ToString().Replace(",", ".");
         string rotation = transform.localRotation.ToString().Replace(",", ".");
+        
         string jsonData = "{" +
             "\"time\": \"" + DateTime.Now + "\"," +
             "\"action\": \"MM-Add\"," +
             "\"sProcess\": \"" + GameManager.Instance.userID + "\"," +
-            "\"sComplements\": \"Room At " + GameManager.Instance.currentPlayerLocation + " With SA position: " + position + " rotation: " + rotation + "\"," +
+            "\"sComplements\": [{ " +
+               "\"key\": \"Item\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"Room\"}," +
+
+               "{\"key\": \"From\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + GameManager.Instance.userID + "\"}," +
+
+               "{\"key\": \"At\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + GameManager.Instance.currentPlayerLocation + "\"}," +               
+
+               "{\"key\": \"With\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + "SA position: " + position + " rotation: " + rotation  + "\"}]," +            
             "\"dProcess\": \"Location Service\"" +
             "}";
         return jsonData;        

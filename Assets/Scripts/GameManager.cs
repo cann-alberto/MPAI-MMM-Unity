@@ -4,8 +4,7 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
-
-    public string playerName;
+    
     public string personaUrl;
     public string humanID;
     public string userID;

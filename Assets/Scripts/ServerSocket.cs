@@ -119,18 +119,31 @@ public class ServerSocket : MonoBehaviour
 [Serializable]
 public class MessageInfo
 {
-    public DateTime time;
-    public string source;
-    public string destination;
-    public string body;    
-    
+    public string header;
+    public string mInstanceID;
+    public MessageData messageData;
+    public string descrMetadata;            
 
-    public MessageInfo(DateTime time, string source, string destination, string body)
+    public MessageInfo(string header, string mInstanceID, MessageData messageData, string descrMetadata)
     {
-        this.time = time;
-        this.source = source;
-        this.destination = destination;
-        this.body = body;        
-    }
-     
+        this.header = header;
+        this.mInstanceID = mInstanceID;
+        this.messageData = messageData;
+        this.descrMetadata = descrMetadata;
+    }     
 }
+
+[Serializable]
+public class MessageData
+{
+    public string messagePayload;
+    public PayloadData payloadData;    
+}
+
+[Serializable]
+public class PayloadData
+{
+    public int payloadLength;
+    public string payloadDataURI;
+}
+

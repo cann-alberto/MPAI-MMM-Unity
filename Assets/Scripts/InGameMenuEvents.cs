@@ -1,5 +1,6 @@
 using kcp2k;
 using Mirror;
+using ReadyPlayerMe.Core;
 using ReadyPlayerMe.Samples.QuickStart;
 using System;
 using System.Collections;
@@ -85,16 +86,12 @@ public class InGameMenuEvents : MonoBehaviour
             // Add a new line
             string[] updatedLines = new string[lines.Length + 1];
             Array.Copy(lines, updatedLines, lines.Length);
-            updatedLines[updatedLines.Length - 1] = 
-                "[" + message.time + "] "+ message.source + " : " + message.body + "\n";
+            updatedLines[updatedLines.Length - 1] = "[" + message.descrMetadata + "]" + " : " + message.messageData.messagePayload + "\n";
 
             // Join the lines back with newlines and print the result
             _messageLabel.text = string.Join("\n", updatedLines);            
         }
     }
-
-
-
 
     #region MM-SEND
     private void OnMMSendButtonClicked(ClickEvent evt)
@@ -117,9 +114,7 @@ public class InGameMenuEvents : MonoBehaviour
     }
 
     private void SendMsg(ClickEvent evt)
-    {
-        
-
+    {        
         TextField toTextField = _document.rootVisualElement.Q<TextField>("toTextField");
         TextField msgTextField = _document.rootVisualElement.Q<TextField>("msgTextField");
 
@@ -129,9 +124,7 @@ public class InGameMenuEvents : MonoBehaviour
             return;
         }
 
-
-        // Retrieve comInfo by humanID
-        UnityEngine.Debug.Log("S-Process: User1;\nAction: MM-Send;\nS-Compl: Message;\nD-Process: ACSrvc"); //User1 checks User2’s whereabout
+        // Retrieve comInfo by humanID        
         StartCoroutine(RetrieveComInfo(toTextField.value, (comInfo) =>
         {
             if (string.IsNullOrEmpty(comInfo))
@@ -140,27 +133,24 @@ public class InGameMenuEvents : MonoBehaviour
                 return;
             }
 
-            // Send the message
-            UnityEngine.Debug.Log("S-Process: User1;\nAction: MM-Send;\nS-Compl: Message;\nD-Process: To User2");// User1 sends a message to User2
-            UnityEngine.Debug.Log("after" + comInfo);
-            string actionDataJson = CreateMessageJson(comInfo, msgTextField.value);
-            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Communication/messages", actionDataJson, HandleResponse));
+            // Send the message                        
+            string messageDataJson = CreateMessageJson(comInfo, msgTextField.value);
+            StartCoroutine(GameManager.Instance.WebAPIManager.UploadRequest("Communication/messages", messageDataJson, HandleResponse));
 
-            SendTextMessage(comInfo, actionDataJson);
-            UnityEngine.Debug.Log("Message sent to " + comInfo);
+            SendTextMessage(comInfo, messageDataJson);
+            //UnityEngine.Debug.Log("Message sent to " + comInfo);
 
-            MessageInfo myMessage = new MessageInfo(DateTime.Now, GameManager.Instance.userID, comInfo, msgTextField.value);
+            MessageInfo myMessage = JsonUtility.FromJson<MessageInfo>(messageDataJson);                          
             UpdateMessageLabel(myMessage);
 
-            msgTextField.value = "";
+            //msgTextField.value = "";
         }));
     }
 
     private IEnumerator RetrieveComInfo(string humanID, Action<string> onCompleted)
     {
         User targetUser = null;
-
-        yield return GameManager.Instance.WebAPIManager.GetRequest("Activity/user/humanid/" + humanID, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.GetRequest("Activity/users/humanid/" + humanID, (responseText) =>
         {
             if (!string.IsNullOrEmpty(responseText))
             {
@@ -177,12 +167,9 @@ public class InGameMenuEvents : MonoBehaviour
             UnityEngine.Debug.LogError("Account is null.");
             onCompleted?.Invoke(null);
             yield break;
-        }
-        UnityEngine.Debug.Log(targetUser.comIp);
-        UnityEngine.Debug.Log(targetUser.comPort);
+        }        
 
-        string comInfo = targetUser.comIp + ":" + targetUser.comPort;
-        UnityEngine.Debug.Log("before" + comInfo);
+        string comInfo = targetUser.comIp + ":" + targetUser.comPort;        
         onCompleted?.Invoke(comInfo);
     }
 
@@ -192,13 +179,14 @@ public class InGameMenuEvents : MonoBehaviour
     }
 
     private string CreateMessageJson(string toTextField, string msgTextField)
-    {        
-        string jsonData = "{" +            
-            "\"body\": \"" + msgTextField + "\"," +
-            "\"source\": \"" + GameManager.Instance.userID + "\"," +
-            "\"destination\": \"" + toTextField + "\"," +
-            "\"time\": \"" + DateTime.Now + "\"" +
-            "}";
+    {              
+        string jsonData = "{" +
+            " \"header\": \"MMM-MSG-V1.0\",  " +
+            " \"mInstanceID\": \"MInstance00\",  " +
+            " \"messageData\": {" +
+                "\"messagePayload\": \"" + msgTextField + "\", " +
+                "\"payloadData\": {}}, " +                
+            "\"descrMetadata\": \"" + DateTime.Now + " From: " + GameManager.Instance.humanID + "\"}";
         return jsonData;
     }
 
@@ -253,12 +241,15 @@ public class InGameMenuEvents : MonoBehaviour
 
     private IEnumerator BuyAndCreateRoom(PlayerTracker playerTracker)
     {
+        
+        
+        
+        
         // User buys the Parcel        
         bool isTransactSucces = false;
-        string newTransact = CreateTransaction();
-        UnityEngine.Debug.Log($"S-Process: User;\nAction: Transact; \nS-Compl: With Transaction;\nD-Process: User"); //User1 buys Parcel
+        string newTransact = CreateTransaction();        
 
-        yield return GameManager.Instance.WebAPIManager.Upload("Transact/transaction", newTransact, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.UploadRequest("Transaction/transactions", newTransact, (responseText) =>
         {
             if (responseText != null)
             {
@@ -285,15 +276,18 @@ public class InGameMenuEvents : MonoBehaviour
     }
 
     private string CreateTransaction()
-    {        
+    {
+        
         string jsonData = "{" +
-            " \"header\": \"MMM-ACC-V2.2\",  " +
+            " \"header\": \"MMM-TRA-V1.0\",  " +
             " \"mInstanceID\": \"MInstance00\",  " +
             " \"transactionData\": {" +
-            "   \"assetID\": \" Asset00\", " +
-            "   \"transactionTime\": \"" + DateTime.Now + "\"" +
+            "   \"assetID\": \"" + GameManager.Instance.currentPlayerLocation + "\"," +
+            "   \"senderData\": {" +
+            "   \"senderID\": \"" + GameManager.Instance.userID + "\"}" +
             "},  " +
-            "\"descrMetadata\": \"" + DateTime.Now + "\"}";        
+            "\"descrMetadata\": \"" + DateTime.Now + "\"}";
+        
         return jsonData;
     }
     #endregion

@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Net;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -79,18 +78,18 @@ public class MainMenuEvents : MonoBehaviour
                 
         // Update the DataManager with the retrieved account data
         GameManager.Instance.humanID = humanID;
-        GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + userAccount.personae[0].model;
-        GameManager.Instance.userID = userAccount.users[0].userID;
+        GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + userAccount.processData[0].personaID[0];
+        GameManager.Instance.userID = userAccount.processData[0].processID;        
 
         bool userUpdated = false;
-        string userJson = CreateUpdatedUserJson(userAccount.users[0].userID, humanID, GameManager.Instance.ipAddress, GameManager.Instance.port);
+        string userJson = CreateUpdatedUserJson(userAccount.processData[0].processID, humanID, GameManager.Instance.ipAddress, GameManager.Instance.port);
         
         // Send information for comunication
-        yield return GameManager.Instance.WebAPIManager.PutRequest("Activity/users/" + userAccount.users[0].userID + "/comInfo", userJson, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.PutRequest("Activity/users/" + userAccount.processData[0].processID + "/comInfo", userJson, (responseText) =>
         {
             if (responseText != null)
             {
-                Debug.Log("User updated successfully for userID: " + userAccount.users[0].userID);
+                Debug.Log("User updated successfully for userID: " + userAccount.processData[0].processID);
                 userUpdated = true;
             }
             else
@@ -164,8 +163,7 @@ public class MainMenuEvents : MonoBehaviour
     }
 
     private void OnSubmitRegisterButtonClick(ClickEvent evt)
-    {
-        Debug.Log("S-Process: Human;\nAction: Register;\nS-Compl: With PersonalProfile;\nD-Process: RGSrvc;\nD-Compl: To human"); //human registers with M-Instance
+    {        
 
         // Collect personal data in JSON format
         string personalDataJson = CreatePersonalDataJson();
@@ -178,7 +176,7 @@ public class MainMenuEvents : MonoBehaviour
     {
         // Step 1: Create the profile
         Profile newProfile = null;        
-        yield return GameManager.Instance.WebAPIManager.Upload("Registration/profiles", personalDataJson, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.UploadRequest("Registration/profiles", personalDataJson, (responseText) =>
         {
             if (responseText != null)
             {
@@ -192,28 +190,10 @@ public class MainMenuEvents : MonoBehaviour
         });
         if (newProfile == null) yield break;
 
-        // Step 2: Create the account
-        Account newAccount = null;
-        string accountJson = ConvertToAccount(newProfile);
-        yield return GameManager.Instance.WebAPIManager.Upload("Registration/accounts", accountJson, (responseText) =>
-        {
-            if (responseText != null)
-            {
-                Debug.Log("Account created successfully\n Account:" + responseText);
-                newAccount = JsonUtility.FromJson<Account>(responseText);
-            }
-            else
-            {
-                Debug.LogError("Error while creating the account.");
-            }
-        });
-        if (newAccount == null) yield break;
-        Debug.Log("S-Process: RGSrvc;\nS-Compl: Account;\nD-Process: human");
-
-        // Step 3: Create the user
+        // Step 2: Create the user
         User newUser = null;
         string newUserJson = CreateNewUser();
-        yield return GameManager.Instance.WebAPIManager.Upload("Registration/users", newUserJson, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.UploadRequest("Registration/users", newUserJson, (responseText) =>
         {
             if (responseText != null)
             {
@@ -226,29 +206,27 @@ public class MainMenuEvents : MonoBehaviour
             }
         });
         if (newUser == null) yield break;
+
+        // Step 3: Create the account
+        Account newAccount = null;
+        TextField personaTextField = _document.rootVisualElement.Q("personaTextField") as TextField;
+        string accountJson = CreateAccountJson(newProfile, newUser, personaTextField.value);
         
-        // Step 4: Update the account
-        bool accountUpdated = false;
-        TextField personaTextField = _document.rootVisualElement.Q("personaTextField") as TextField;        
-        string accoutJson = CreateUpdatedAccountJson(newAccount, newUser, personaTextField.value);
-        yield return GameManager.Instance.WebAPIManager.PutRequest("Registration/accounts/" + newAccount.accountID, accoutJson, (responseText) =>
+        yield return GameManager.Instance.WebAPIManager.UploadRequest("Registration/accounts", accountJson, (responseText) =>
         {
             if (responseText != null)
             {
-                Debug.Log("Account updated successfully for account ID: " + newAccount.accountID);
-                accountUpdated = true;
+                Debug.Log("Account created successfully\n Account:" + responseText);
+                newAccount = JsonUtility.FromJson<Account>(responseText);
             }
             else
             {
-                Debug.LogError("Error while updating account.");
+                Debug.LogError("Error while creating the account.");
             }
         });
-        if (!accountUpdated) yield break;
-        GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;
-        GameManager.Instance.userID = newUser.userID;
+        if (newAccount == null) yield break;
 
-
-        // Step 5: Send information for comunication
+        // Step 4: Send information for comunication
         bool userUpdated = false;
         string userJson = CreateUpdatedUserJson(newUser.userID, newAccount.humanID, GameManager.Instance.ipAddress, GameManager.Instance.port);
         yield return GameManager.Instance.WebAPIManager.PutRequest("Activity/users/" + newUser.userID + "/comInfo", userJson, (responseText) =>
@@ -265,8 +243,9 @@ public class MainMenuEvents : MonoBehaviour
         });
         if (!userUpdated) yield break;
 
-        // Step 6: Connect to the server
+        // Step 5: Connect to the server
         _networkClientManager.ConnectToServer();
+        GameManager.Instance.userID = newUser.userID;
         GameManager.Instance.ServerSocket.StartServer(GameManager.Instance.ipAddress, GameManager.Instance.port); // Start Communication Server
 
     }
@@ -289,7 +268,7 @@ public class MainMenuEvents : MonoBehaviour
         TextField humanIdTextField = _document.rootVisualElement.Q("humanIdTextField") as TextField;
 
         string jsonData = "{" +
-            " \"header\": \"MMM-ACC-V1.2\",  " +
+            " \"header\": \"MMM-PPR-V1.0\",  " +
             " \"mInstanceID\": \"MInstance00\",  " +
             " \"humanID\": \"" + humanIdTextField.value + "\", " +
             "\"personalProfileData\": {" +
@@ -301,52 +280,29 @@ public class MainMenuEvents : MonoBehaviour
             "},  " +
             "\"descrMetadata\": \"" + DateTime.Now + "\"}";                
 
-        // Passing data to the online scene
-        GameManager.Instance.playerName = firstNameTextField.value;
+        // Passing data to the online scene        
         GameManager.Instance.humanID = humanIdTextField.value;        
         return jsonData;
-    }
+    }   
 
-    private string ConvertToAccount(Profile newProfile)
-    {
-        string jsonData = "{" +
-            " \"header\": \"" + newProfile.header + "\", " +
-            " \"mInstanceID\": \"" + newProfile.mInstanceID + "\", " +
-            " \"mEnvironmentID\": \"Environment00\",  " +            
-            " \"humanID\": \"" + newProfile.humanID + "\", " +
-            " \"personalProfileID\": \"" + newProfile.personalProfileID + "\", " +
-            " \"rights\": []," +
-            " \"users\": []," +
-            " \"personae\": []," +
-            "\"descrMetadata\": \"" + DateTime.Now + "\"}";               
-        return jsonData;
-    }
-
-    private string CreatePersonaJsonPart ()
+    
+    private string CreateAccountJson(Profile newProfile, User newUser, string persona)
     {
         TextField personaTextField = _document.rootVisualElement.Q("personaTextField") as TextField;
-        string jsonData = "{" +
-            "\"model\": \"" + personaTextField.value + "\"}";
+        GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;
 
-        GameManager.Instance.personaUrl = GameManager.Instance.WebAPIManager.BASE_URL + "Registration/avatars/" + personaTextField.value;        
-        return jsonData;
-    }
-    
-    private string CreateUpdatedAccountJson(Account accountToUpdate, User newUser, string persona)
-    {
         string jsonData = "{" +
-            " \"accountID\": \"" + accountToUpdate.accountID + "\", " +
-            " \"header\": \"" + accountToUpdate.header + "\", " +
-            " \"mInstanceID\": \"" + accountToUpdate.mInstanceID + "\", " +
+            " \"header\": \"MMM-ACC-V1.0\",  " +
+            " \"mInstanceID\": \"" + newProfile.mInstanceID + "\", " +            
             " \"mEnvironmentID\": \"Environment00\",  " +
-            " \"humanID\": \"" + accountToUpdate.humanID + "\", " +
-            " \"personalProfileID\": \"" + accountToUpdate.personalProfileID + "\", " +
-            " \"rights\": []," +
-            " \"users\": [{" +
-                "\"userID\": \"" + newUser.userID + "\", " +
-                "\"humanID\": \"" + newUser.humanID + "\"}]," +            
-            " \"personae\": [{\"model\": \"" + persona + "\"}]," +
-            "\"descrMetadata\": \"" + DateTime.Now + "\"}";
+            " \"humanID\": \"" + newProfile.humanID + "\", " +
+            " \"personalProfileID\": \"" + newProfile.personalProfileID + "\", " +
+            " \"processData\": [{" +
+                "\"processID\": \"" + newUser.userID + "\", " +
+                "\"rightsID\": [], " +
+                "\"personaID\": [\"" + personaTextField.value + "\"]}], " +                
+            "\"descrMetadata\": \"" + DateTime.Now + "\"}";        
+        
         Debug.Log(jsonData);
         return jsonData;        
     }

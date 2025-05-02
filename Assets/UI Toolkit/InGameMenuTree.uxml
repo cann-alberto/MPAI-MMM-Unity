@@ -5,7 +5,7 @@
         <ui:VisualElement name="InGameMenuPanel">
             <ui:Button text="MM-Send" parse-escape-sequences="true" display-tooltip-when-elided="true" name="MMSendButton" class="button" />
             <ui:VisualElement name="SendMsgVisualElement" style="display: none;">
-                <ui:TextField picking-mode="Ignore" label="To:" name="toTextField" tooltip="Insert HumanID" value="127.0.0.1:8080" />
+                <ui:TextField picking-mode="Ignore" label="To:" name="toTextField" tooltip="Insert HumanID" />
                 <ui:TextField picking-mode="Ignore" label="Msg:" name="msgTextField" value="Text Here" />
                 <ui:Button text="Send" parse-escape-sequences="true" display-tooltip-when-elided="true" name="SendMessageButton" />
             </ui:VisualElement>

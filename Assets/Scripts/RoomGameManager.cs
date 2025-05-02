@@ -59,11 +59,9 @@ public class RoomGameManager : MonoBehaviour
             }
         }
         else // A client is connecting to the room
-        {
-            //Debug.Log("Room " + RoomData.roomName + " loaded");
-            Debug.Log($"S-Process: User;\nAction: MM-Embed; \nS-Compl: Persona At MLoc With SA;\nD-Process: LOSrvc"); // Persona moved inside the Room (visible)
+        {            
             string moveDataJson = CreateEmbedDataJson();
-            StartCoroutine(GameManager.Instance.WebAPIManager.Upload("Location/action-request", moveDataJson, HandleResponse));
+            StartCoroutine(GameManager.Instance.WebAPIManager.UploadRequest("Activity/process-actions", moveDataJson, HandleResponse));
 
             _transport.port = (ushort)RoomData.netInfo.Port;            
             _networkManager.StartClient(); // Start Mirror client            
@@ -75,14 +73,30 @@ public class RoomGameManager : MonoBehaviour
     {
         string position = transform.position.ToString().Replace(",", ".");
         string rotation = transform.localRotation.ToString().Replace(",", ".");
+
         string jsonData = "{" +
             "\"time\": \"" + DateTime.Now + "\"," +
             "\"action\": \"MM-Embed\"," +
             "\"sProcess\": \"" + GameManager.Instance.userID + "\"," +
-            "\"sComplements\": \"Persona At " + GameManager.Instance.currentPlayerLocation + " With SA position: " + position + " rotation: " + rotation + "\"," +
+            "\"sComplements\": [{ " +
+               "\"key\": \"Item\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"Persona\"}," +
+
+               "{\"key\": \"From\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + GameManager.Instance.userID + "\"}," +
+
+               "{\"key\": \"At\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + GameManager.Instance.currentPlayerLocation + "\"}," +
+
+               "{\"key\": \"With\"," +
+               "\"valueType\": \"string\"," +
+               "\"value\": \"" + "SA position: " + position + " rotation: " + rotation + "\"}]," +
             "\"dProcess\": \"Location Service\"" +
             "}";
-        return jsonData;
+        return jsonData;        
     }
 
 
